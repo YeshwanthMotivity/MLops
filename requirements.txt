@@ -11,6 +11,8 @@ psycopg2-binary
 requests
 
 # Training
+numpy<2
+opencv-python-headless<4.10
 ultralytics
 torch
 

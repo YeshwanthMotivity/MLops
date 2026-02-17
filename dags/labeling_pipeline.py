@@ -124,7 +124,6 @@ wait_for_annotation = PythonSensor(
     poke_interval=60, # Check every minute
     timeout=60 * 60 * 24 * 7, # Wait up to a week
     mode='reschedule', # Release worker slot while waiting
-    provide_context=True,
     dag=dag,
 )
 

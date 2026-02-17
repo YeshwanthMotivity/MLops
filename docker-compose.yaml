@@ -10,6 +10,10 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__DAGS_FOLDER: /opt/dags
+    # Webserver fixes
+    AIRFLOW__WEBSERVER__SECRET_KEY: 'fixed_secret_key_for_dev_env'
+    AIRFLOW__WEBSERVER__BASE_URL: 'http://localhost:8081'
+    AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: 'true'
     PYTHONPATH: /opt/dataset-platform:/opt/training
     # Dataset platform
     DATASET_PLATFORM_ROOT: /opt/dataset-platform

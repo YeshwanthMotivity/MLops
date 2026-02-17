@@ -24,6 +24,17 @@ dag = DAG(
     catchup=False,
 )
 
+# ----------------- 0. Download Model -----------------
+def run_download_model():
+    from training.download_model import download_model
+    download_model()
+
+download_model_task = PythonOperator(
+    task_id='download_model',
+    python_callable=run_download_model,
+    dag=dag,
+)
+
 # ----------------- 1. Export Dataset -----------------
 def run_export(**context):
     conf = context['dag_run'].conf or {}
@@ -75,4 +86,4 @@ register_task = BashOperator(
     dag=dag,
 )
 
-export_task >> train_task >> register_task
+download_model_task >> export_task >> train_task >> register_task

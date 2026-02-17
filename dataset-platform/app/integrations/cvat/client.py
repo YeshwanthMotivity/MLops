@@ -28,9 +28,14 @@ class CvatClient:
 
     def _login(self):
         try:
+            headers = {}
+            if "host.docker.internal" in self.base:
+                headers["Host"] = "localhost"
+
             r = requests.post(
                 f"{self.base}/api/auth/login",
                 json={"username": CVAT_USERNAME, "password": CVAT_PASSWORD},
+                headers=headers,
                 timeout=30
             )
         except requests.ConnectionError:
@@ -43,7 +48,12 @@ class CvatClient:
         return r.json()["key"]
 
     def _headers(self):
-        return {"Authorization": f"Token {self.token}"}
+        headers = {"Authorization": f"Token {self.token}"}
+        # If we are connecting to the host from inside docker, Traefik (in CVAT)
+        # expects the 'Host: localhost' header to route to the cvat_server.
+        if "host.docker.internal" in self.base:
+            headers["Host"] = "localhost"
+        return headers
 
     # ---------------- PROJECT ----------------
 

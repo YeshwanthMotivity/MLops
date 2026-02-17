@@ -1,16 +1,19 @@
 
 import argparse
-import time
 import os
+from ultralytics import YOLO
+
+MODEL_PATH = os.getenv("MODEL_PATH", "/opt/model/yolov8n.pt")
 
 def train(data_config, epochs, imgsz):
-    print(f"Mock Training Started...")
+    print(f"Loading model from: {MODEL_PATH}")
     print(f"Data Config: {data_config}")
     print(f"Epochs: {epochs}")
     print(f"Image Size: {imgsz}")
 
     # Initialize MLflow
     import mlflow
+    import time
     
     # Set tracking URI if not set in env (default to localhost for local testing)
     if not os.environ.get("MLFLOW_TRACKING_URI"):
@@ -26,27 +29,25 @@ def train(data_config, epochs, imgsz):
         mlflow.log_param("imgsz", imgsz)
         mlflow.log_param("data_config", data_config)
         
-        # Simulate training time
-        time.sleep(2)
+        model = YOLO(MODEL_PATH)
         
-        # Log metrics
-        for epoch in range(epochs):
-            loss = 1.0 / (epoch + 1)
-            accuracy = 0.5 + (epoch * 0.1)
-            mlflow.log_metric("loss", loss, step=epoch)
-            mlflow.log_metric("accuracy", accuracy, step=epoch)
-            print(f"Epoch {epoch+1}/{epochs}: loss={loss:.4f}, accuracy={accuracy:.4f}")
-            time.sleep(0.5)
-            
+        results = model.train(
+            data=data_config,
+            epochs=epochs,
+            imgsz=imgsz,
+            project="/opt/training/runs",
+            name="train",
+            exist_ok=True,
+        )
+        
         print("Training complete.")
+        best_path = "/opt/training/runs/train/weights/best.pt"
         
-        # Log simulated model artifact
-        os.makedirs("runs/detect/train/weights", exist_ok=True)
-        with open("runs/detect/train/weights/best.pt", "w") as f:
-            f.write("dummy model content")
-            
-        mlflow.log_artifact("runs/detect/train/weights/best.pt")
-        print(f"Model saved to runs/detect/train/weights/best.pt and logged to MLflow")
+        if os.path.exists(best_path):
+            mlflow.log_artifact(best_path)
+            print(f"Model saved to {best_path} and logged to MLflow")
+        
+        return best_path
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -56,3 +57,4 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     train(args.data, args.epochs, args.imgsz)
+

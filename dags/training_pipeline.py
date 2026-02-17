@@ -24,17 +24,6 @@ dag = DAG(
     catchup=False,
 )
 
-# ----------------- 0. Download Model -----------------
-def run_download_model():
-    from training.download_model import download_model
-    download_model()
-
-download_model_task = PythonOperator(
-    task_id='download_model',
-    python_callable=run_download_model,
-    dag=dag,
-)
-
 # ----------------- 1. Export Dataset -----------------
 def run_export(**context):
     conf = context['dag_run'].conf or {}
@@ -58,7 +47,7 @@ export_task = PythonOperator(
 )
 
 # ----------------- 2. Train Model -----------------
-# We use BashOperator to run the training script in a separate process/environment if needed.
+# Model is pre-downloaded manually to /opt/model/yolov8n.pt (mounted from mlops/model/)
 # The training script is expected to be at /opt/training/train.py
 
 train_command = """
@@ -86,4 +75,4 @@ register_task = BashOperator(
     dag=dag,
 )
 
-download_model_task >> export_task >> train_task >> register_task
+export_task >> train_task >> register_task

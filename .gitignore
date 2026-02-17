@@ -16,6 +16,8 @@ dataset-platform/exports/
 dataset-platform/registry/
 mlflow-data/
 postgres-data/
+storage/
+import_errors.txt
 *.log
 *.ppt
 *.pptx

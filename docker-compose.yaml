@@ -30,6 +30,7 @@ x-airflow-common: &airflow-common
     - ./dataset-platform:/opt/dataset-platform
     - ./training:/opt/training
     - ./storage:/opt/storage
+    - ./incoming:/opt/dataset-platform/incoming
   depends_on:
     postgres:
       condition: service_healthy

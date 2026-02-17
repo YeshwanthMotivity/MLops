@@ -184,8 +184,17 @@ class CvatClient:
                 if not result_url:
                     raise RuntimeError(f"Export finished but no result_url (rq_id={rq_id})")
 
-                # result_url may be relative
-                if result_url.startswith("/"):
+                # result_url may be absolute (pointing to localhost) or relative
+                from urllib.parse import urlparse
+                parsed_result = urlparse(result_url)
+                
+                # If absolute, extract path and query to reconstruct with self.base
+                if parsed_result.scheme and parsed_result.netloc:
+                    path_with_query = parsed_result.path
+                    if parsed_result.query:
+                        path_with_query += f"?{parsed_result.query}"
+                    result_url = f"{self.base}{path_with_query}"
+                elif result_url.startswith("/"):
                     result_url = f"{self.base}{result_url}"
 
                 dr = requests.get(result_url, headers=self._headers(), timeout=120)

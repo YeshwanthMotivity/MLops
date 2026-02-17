@@ -1,4 +1,4 @@
-
+from ultralytics import YOLO
 import os
 
 def download_model():

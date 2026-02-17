@@ -7,7 +7,7 @@ x-airflow-common: &airflow-common
   environment: &airflow-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__DAGS_FOLDER: /opt/dags
     # Webserver fixes
@@ -99,6 +99,18 @@ services:
       - "5000:5000"
     volumes:
       - mlflow-data:/opt/mlflow
+    restart: unless-stopped
+
+  inference:
+    build:
+      context: ./inference
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./model:/opt/model
+      - ./inference:/app
+    environment:
+      - MODEL_PATH=/opt/model/best.pt
     restart: unless-stopped
 
 volumes:

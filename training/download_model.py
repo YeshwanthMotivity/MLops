@@ -1,5 +1,5 @@
-from ultralytics import YOLO
 import os
+from ultralytics import YOLO
 
 def download_model():
     print("Downloading YOLOv8n model...")

@@ -20,3 +20,24 @@ postgres-data/
 *.ppt
 *.pptx
 *.pdf
+
+# Testing
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Training & MLflow
+runs/
+mlruns/
+mlflow.db
+
+# Local Data
+storage/
+incoming/
+registry/

@@ -10,7 +10,7 @@ import mlflow
 MODEL_PATH = os.getenv("MODEL_PATH", "/opt/model/yolov8n.pt")
 RUNS_DIR = Path("/opt/training/runs")
 
-def train(data_config, epochs, imgsz, batch_size):
+def train(data_config, epochs, imgsz, batch_size, register_name=None):
     print(f"🚀 Starting Training...")
     print(f"   Model: {MODEL_PATH}")
     print(f"   Data: {data_config}")
@@ -78,6 +78,16 @@ def train(data_config, epochs, imgsz, batch_size):
             if confusion_matrix.exists():
                 mlflow.log_artifact(str(confusion_matrix))
 
+            # 6. Register Model (Optional)
+            if register_name:
+                model_uri = f"runs:/{run.info.run_id}/weights/best.pt"
+                print(f"   Registering model version: {register_name} (URI: {model_uri})")
+                try:
+                    mlflow.register_model(model_uri, register_name)
+                    print("✅ Model registered successfully.")
+                except Exception as e:
+                    print(f"⚠️ Failed to register model: {e}")
+
             return str(best_weight_path)
         else:
             print("❌ Error: Could not find best.pt to log.")
@@ -89,6 +99,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--batch", type=int, default=16)
+    parser.add_argument("--register-name", type=str, default=None, help="Model name for MLflow Registry")
     
     args = parser.parse_args()
     
@@ -96,7 +107,7 @@ if __name__ == "__main__":
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     
     try:
-        train(args.data, args.epochs, args.imgsz, args.batch)
+        train(args.data, args.epochs, args.imgsz, args.batch, args.register_name)
     except Exception as e:
         print(f"❌ Training Failed: {e}")
         exit(1)

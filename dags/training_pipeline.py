@@ -72,7 +72,8 @@ train_command = """
     python /opt/training/train.py \
     --data "{{ task_instance.xcom_pull(task_ids='export_dataset') }}/dataset.yaml" \
     --epochs {{ dag_run.conf.get('epochs', 10) }} \
-    --imgsz 640
+    --imgsz 640 \
+    --register-name "{{ dag_run.conf.get('model_name', 'YOLOv8_Model') }}"
 """
 
 train_task = BashOperator(
@@ -81,16 +82,4 @@ train_task = BashOperator(
     dag=dag,
 )
 
-# ----------------- 3. Register Model -----------------
-# Placeholder for MLflow registration if not handled inside train.py
-register_command = """
-    echo "Model registration would happen here."
-"""
-
-register_task = BashOperator(
-    task_id='register_model',
-    bash_command=register_command,
-    dag=dag,
-)
-
-checkout_task >> export_task >> train_task >> register_task
+checkout_task >> export_task >> train_task

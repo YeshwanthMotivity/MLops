@@ -17,3 +17,6 @@ dataset-platform/registry/
 mlflow-data/
 postgres-data/
 *.log
+*.ppt
+*.pptx
+*.pdf

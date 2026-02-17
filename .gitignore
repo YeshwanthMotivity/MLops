@@ -41,3 +41,4 @@ mlflow.db
 storage/
 incoming/
 registry/
+/storage

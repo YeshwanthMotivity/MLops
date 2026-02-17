@@ -24,6 +24,24 @@ dag = DAG(
     catchup=False,
 )
 
+# ----------------- 0. Checkout Data Version -----------------
+# Checkout the specific dataset version from DVC/Git
+checkout_command = """
+    cd /opt && \
+    git config --global --add safe.directory /opt && \
+    if [ "{{ dag_run.conf.get('version', 'None') }}" != "None" ]; then \
+        echo "Checking out version {{ dag_run.conf.get('version') }}"; \
+        git checkout {{ dag_run.conf.get('version') }}; \
+    fi && \
+    dvc checkout || echo "DVC Checkout failed or no changes"
+"""
+
+checkout_task = BashOperator(
+    task_id='checkout_dataset',
+    bash_command=checkout_command,
+    dag=dag,
+)
+
 # ----------------- 1. Export Dataset -----------------
 def run_export(**context):
     conf = context['dag_run'].conf or {}
@@ -75,4 +93,4 @@ register_task = BashOperator(
     dag=dag,
 )
 
-export_task >> train_task >> register_task
+checkout_task >> export_task >> train_task >> register_task

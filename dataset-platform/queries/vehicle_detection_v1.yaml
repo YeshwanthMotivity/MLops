@@ -1,0 +1,9 @@
+label_set: vehicle_detection
+format: yolo
+split: 0.8
+seed: 42
+# Optional filters:
+# sources: [camera_A, camera_B]
+# exclude_labels: [unknown]
+# min_annotations: 2
+# image_ids_file: queries/selected_ids.txt

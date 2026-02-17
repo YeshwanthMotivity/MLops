@@ -1,0 +1,18 @@
+
+# Data Handling
+pandas
+numpy
+Pillow
+pyyaml
+python-dotenv
+psycopg2-binary
+
+# CVAT Integration
+requests
+
+# Training
+ultralytics
+torch
+
+# Airflow Providers (if needed externally, though image has them)
+apache-airflow-providers-postgres

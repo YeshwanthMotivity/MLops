@@ -29,14 +29,47 @@ docker compose up -d --build
 ## 🧪 Verification Workflows
 
 ### A. Labeling Workflow (Airflow)
-1.  Upload images to `incoming/`.
-2.  Trigger `labeling_pipeline` DAG.
-3.  **Result:** Images ingested, sent to CVAT, annotated, pulled, and **Committed to DVC**.
+**Goal:** Automate data ingestion, annotation (CVAT), and versioning.
+
+**Typical Inputs (JSON Configuration):**
+```json
+{
+  "source_id": "manual_upload",   // Source of images
+  "batch_size": 10,               // Number of images to label
+  "cvat_project": "MyProject",    // Project name in CVAT
+  "labels": ["car", "truck"]      // Labels to use
+}
+```
+
+**Steps to Test:**
+1.  Place images in `mlops/dataset-platform/incoming/`.
+2.  Go to Airflow UI -> `labeling_pipeline` -> **Trigger DAG w/ Config**.
+3.  Paste the JSON above (optional, defaults exist).
+4.  **Verify:**
+    *   **CVAT:** New task appears at [localhost:8080](http://localhost:8080).
+    *   **Storage:** Annotations saved to `storage/images`.
+    *   **Git/DVC:** New commit created with message "Auto-commit...".
 
 ### B. Training Workflow (Airflow)
-1.  Trigger `training_pipeline` DAG.
-2.  **Result:** DVC checks out data, exports dataset, runs YOLOv8 training.
-3.  **Check:** View metrics in MLflow and find `best.pt` in `model/`.
+**Goal:** Train YOLOv8 model on versioned data.
+
+**Typical Inputs (JSON Configuration):**
+```json
+{
+  "version": "HEAD",              // Git version tag/branch (optional)
+  "epochs": 10,                   // Training epochs
+  "model_name": "YOLOv8_Demo",    // Name for MLflow registry
+  "split": 0.8                    // Train/Val split ratio
+}
+```
+
+**Steps to Test:**
+1.  Go to Airflow UI -> `training_pipeline` -> **Trigger DAG w/ Config**.
+2.  **Verify:**
+    *   **Airflow:** Wait for `train_model` task to complete (~5-10 mins).
+    *   **MLflow:** Check [localhost:5000](http://localhost:5000) for loss curves.
+    *   **Artifacts:** Model saved to `mlops/model/best.pt`.
+
 
 ### C. Inference Workflow (API)
 Send an image to the running service:

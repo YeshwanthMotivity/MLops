@@ -31,8 +31,8 @@ def select_unlabeled(label_set: str, limit: int = 50):
 
         images = images[~images["image_id"].isin(labeled_ids)]
 
-    # oldest first (important for continuous ingestion)
-    images = images.sort_values("ingested_at")
+    # newest first (ensures recent uploads are processed immediately)
+    images = images.sort_values("ingested_at", ascending=False)
 
     return images.head(limit)[["image_id", "path"]]
 

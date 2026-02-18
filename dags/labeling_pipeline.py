@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
+from airflow.operators.bash import BashOperator
 from airflow.sensors.python import PythonSensor
 from airflow.utils.trigger_rule import TriggerRule
 
@@ -148,14 +149,18 @@ pull_task = PythonOperator(
 # ----------------- 6. DVC Commit -----------------
 # Commit the new labels to DVC and Git
 commit_command = """
-    cd /opt/dataset-platform && \
-    dvc add ../storage && \
-    dvc push && \
-    git config --global --add safe.directory /opt && \
+    export PATH=$PATH:/home/airflow/.local/bin && \
+    cd /opt/mlops && \
+    git config --global --add safe.directory /opt/mlops && \
     git config --global user.email "airflow@example.com" && \
     git config --global user.name "Airflow Automation" && \
-    git add ../storage.dvc && \
-    git commit -m "Auto-commit: Labelling batch {{ task_instance.xcom_pull(task_ids='create_batch') }}" || echo "No changes to commit"
+    dvc remote modify --local localremote url ${DVC_REMOTE_URL} && \
+    dvc config core.autostage true && \
+    dvc add storage && \
+    dvc add dataset-platform/registry/metadata/*.parquet && \
+    dvc push -r localremote && \
+    git add .gitignore storage.dvc dataset-platform/registry/metadata/*.parquet.dvc && \
+    git commit --allow-empty -m "Auto-commit: Labelling batch {{ task_instance.xcom_pull(task_ids='create_batch') }}"
 """
 
 commit_task = BashOperator(

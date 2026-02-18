@@ -27,13 +27,15 @@ dag = DAG(
 # ----------------- 0. Checkout Data Version -----------------
 # Checkout the specific dataset version from DVC/Git
 checkout_command = """
-    cd /opt && \
-    git config --global --add safe.directory /opt && \
+    export PATH=$PATH:/home/airflow/.local/bin && \
+    cd /opt/mlops && \
+    dvc remote modify --local localremote url ${DVC_REMOTE_URL} && \
+    git config --global --add safe.directory /opt/mlops && \
     if [ "{{ dag_run.conf.get('version', 'None') }}" != "None" ]; then \
         echo "Checking out version {{ dag_run.conf.get('version') }}"; \
         git checkout {{ dag_run.conf.get('version') }}; \
     fi && \
-    dvc checkout || echo "DVC Checkout failed or no changes"
+    dvc checkout
 """
 
 checkout_task = BashOperator(
@@ -66,20 +68,41 @@ export_task = PythonOperator(
 
 # ----------------- 2. Train Model -----------------
 # Model is pre-downloaded manually to /opt/model/yolov8n.pt (mounted from mlops/model/)
-# The training script is expected to be at /opt/training/train.py
+# The training script is expected to be at /opt/mlops/training/train.py
 
 train_command = """
-    python /opt/training/train.py \
+    set -e -o pipefail
+    python /opt/mlops/training/train.py \
     --data "{{ task_instance.xcom_pull(task_ids='export_dataset') }}/dataset.yaml" \
-    --epochs {{ dag_run.conf.get('epochs', 10) }} \
-    --imgsz 640 \
-    --register-name "{{ dag_run.conf.get('model_name', 'YOLOv8_Model') }}"
+    --epochs {{ dag_run.conf.get('epochs', 5) }} \
+    --imgsz 640 2>&1 | tee /tmp/train.log
+    
+    RUN_ID=$(grep "MLFLOW_RUN_ID:" /tmp/train.log | tail -n 1 | awk '{print $NF}' | tr -d '\\r\\n')
+    if [ -z "$RUN_ID" ]; then
+        echo "❌ Error: MLFLOW_RUN_ID not found in logs"
+        exit 1
+    fi
+    echo $RUN_ID
 """
 
 train_task = BashOperator(
     task_id='train_model',
     bash_command=train_command,
+    do_xcom_push=True,
     dag=dag,
 )
 
-checkout_task >> export_task >> train_task
+# ----------------- 3. Register Model -----------------
+register_command = """
+    python /opt/mlops/training/register_model.py \
+    --run-id "{{ task_instance.xcom_pull(task_ids='train_model') }}" \
+    --model-name "{{ dag_run.conf.get('model_name', 'YOLOv8_Model') }}"
+"""
+
+register_task = BashOperator(
+    task_id='register_model',
+    bash_command=register_command,
+    dag=dag,
+)
+
+checkout_task >> export_task >> train_task >> register_task

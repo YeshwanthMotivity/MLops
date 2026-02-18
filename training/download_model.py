@@ -3,8 +3,8 @@ from ultralytics import YOLO
 
 def download_model():
     print("Downloading YOLOv8n model...")
-    # Save to /opt/training so it persists via volume mount
-    model_path = "/opt/training/yolov8n.pt"
+    # Save to /opt/mlops/training so it persists via volume mount
+    model_path = "/opt/mlops/training/yolov8n.pt"
     if os.path.exists(model_path):
          print(f"Model already exists at {model_path}")
          return

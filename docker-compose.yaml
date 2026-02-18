@@ -9,17 +9,17 @@ x-airflow-common: &airflow-common
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__CORE__DAGS_FOLDER: /opt/dags
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/mlops/dags
     # Webserver fixes
     AIRFLOW__WEBSERVER__SECRET_KEY: 'fixed_secret_key_for_dev_env'
     AIRFLOW__WEBSERVER__BASE_URL: 'http://localhost:8081'
     AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: 'true'
     AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT: '300'
     AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT: '300'
-    PYTHONPATH: /opt/dataset-platform:/opt/training
+    PYTHONPATH: /opt/mlops/dataset-platform:/opt/mlops/training
     # Dataset platform
-    DATASET_PLATFORM_ROOT: /opt/dataset-platform
-    STORAGE_ROOT: /opt/storage/images
+    DATASET_PLATFORM_ROOT: /opt/mlops/dataset-platform
+    STORAGE_ROOT: /opt/mlops/storage/images
     # CVAT (running on host machine)
     CVAT_URL: ${CVAT_URL:-http://host.docker.internal:8080}
     CVAT_USERNAME: ${CVAT_USERNAME:-}
@@ -27,13 +27,12 @@ x-airflow-common: &airflow-common
     CVAT_IMAGE_ROOT: ${CVAT_IMAGE_ROOT:-images}
     # MLflow
     MLFLOW_TRACKING_URI: http://mlflow:5000
+    # DVC
+    DVC_REMOTE_URL: /opt/remote_storage
   volumes:
-    - ./dags:/opt/dags
-    - ./dataset-platform:/opt/dataset-platform
-    - ./training:/opt/training
-    - ./model:/opt/model
-    - ./storage:/opt/storage
-    - ./incoming:/opt/dataset-platform/incoming
+    - .:/opt/mlops
+    - C:\MLOps_Remote_Storage:/opt/remote_storage
+    - mlflow-data:/opt/mlflow
   depends_on:
     postgres:
       condition: service_healthy
@@ -55,18 +54,21 @@ services:
 
   airflow-init:
     <<: *airflow-common
+    user: root
     entrypoint: /bin/bash
     command:
       - -c
       - |
-        airflow db migrate
-        airflow users create \
+        mkdir -p /opt/mlflow/artifacts
+        chmod -R 777 /opt/mlflow
+        su airflow -c "airflow db migrate"
+        su airflow -c "airflow users create \
           --username admin \
           --password admin \
           --firstname Admin \
           --lastname User \
           --role Admin \
-          --email admin@example.com || true
+          --email admin@example.com || true"
     depends_on:
       postgres:
         condition: service_healthy

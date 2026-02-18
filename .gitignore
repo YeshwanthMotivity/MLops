@@ -32,3 +32,6 @@ dataset-platform/registry/**/*
 # Re-enable tracking for .dvc files (legacy/safety)
 !*.dvc
 /storage
+
+# Training runs output (stored in MLflow, not needed in Git)
+training/runs/

@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from PIL import Image
 
-from app.config import ANNOTATIONS_DB, IMAGES_DB, EXCLUSIONS_DB, EXPORTS, STORAGE
+from app.config import ANNOTATIONS_DB, IMAGES_DB, EXCLUSIONS_DB, EXPORTS, STORAGE, INCOMING
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -71,9 +71,28 @@ def _build_yolo(annotations: pd.DataFrame, images: pd.DataFrame,
             src_path = Path(row["path"])
 
             if not src_path.exists():
-                print(f"  WARNING: image not found: {src_path}")
-                continue
+                # Fallback: try to find in STORAGE based on sharding or INCOMING
+                # sharding: 2 chars / 2 chars / filename
+                shard_1 = image_id[:2]
+                shard_2 = image_id[2:4]
+                
+                potential_paths = [
+                    STORAGE / shard_1 / shard_2 / f"{image_id}.jpg",
+                    INCOMING / f"{image_id}.jpg"
+                ]
+                
+                found = False
+                for p in potential_paths:
+                    if p.exists():
+                        src_path = p
+                        print(f"  Resolved missing path for {image_id} -> {src_path}")
+                        found = True
+                        break
 
+                if not found:
+                    print(f"  WARNING: image not found: {src_path}")
+                    continue
+            
             # copy image
             dst_img = img_dir / f"{image_id}.jpg"
             shutil.copy2(src_path, dst_img)
@@ -139,6 +158,30 @@ def _build_coco(annotations: pd.DataFrame, images: pd.DataFrame,
 
             # copy image
             dst_img = img_dir / f"{image_id}.jpg"
+            
+            if not src_path.exists():
+                # Fallback: try to find in STORAGE based on sharding or INCOMING
+                # sharding: 2 chars / 2 chars / filename
+                shard_1 = image_id[:2]
+                shard_2 = image_id[2:4]
+                
+                potential_paths = [
+                    STORAGE / shard_1 / shard_2 / f"{image_id}.jpg",
+                    INCOMING / f"{image_id}.jpg"
+                ]
+                
+                found = False
+                for p in potential_paths:
+                    if p.exists():
+                        src_path = p
+                        print(f"  Resolved missing path for {image_id} -> {src_path}")
+                        found = True
+                        break
+                
+                if not found:
+                    print(f"  WARNING: image not found: {src_path}")
+                    continue
+
             shutil.copy2(src_path, dst_img)
 
             w_img, h_img = _get_image_dimensions(src_path)

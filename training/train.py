@@ -7,8 +7,8 @@ from ultralytics import YOLO
 import mlflow
 
 # Default paths
-MODEL_PATH = os.getenv("MODEL_PATH", "/opt/model/yolov8n.pt")
-RUNS_DIR = Path("/opt/training/runs")
+MODEL_PATH = os.getenv("MODEL_PATH", "/opt/mlops/model/yolov8n.pt")
+RUNS_DIR = Path("/opt/mlops/training/runs")
 
 def train(data_config, epochs, imgsz, batch_size, register_name=None):
     print(f"🚀 Starting Training...")
@@ -78,20 +78,12 @@ def train(data_config, epochs, imgsz, batch_size, register_name=None):
             if confusion_matrix.exists():
                 mlflow.log_artifact(str(confusion_matrix))
 
-            # 6. Register Model (Optional)
-            if register_name:
-                model_uri = f"runs:/{run.info.run_id}/weights/best.pt"
-                print(f"   Registering model version: {register_name} (URI: {model_uri})")
-                try:
-                    mlflow.register_model(model_uri, register_name)
-                    print("✅ Model registered successfully.")
-                except Exception as e:
-                    print(f"⚠️ Failed to register model: {e}")
-
-            return str(best_weight_path)
+            # 6. Output Run ID for Airflow
+            print(f"MLFLOW_RUN_ID: {run.info.run_id}")
+            return run.info.run_id
         else:
             print("❌ Error: Could not find best.pt to log.")
-            return None
+            exit(1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

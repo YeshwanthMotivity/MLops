@@ -6,6 +6,7 @@ Pillow
 pyyaml
 python-dotenv
 psycopg2-binary
+dvc
 
 # CVAT Integration
 requests

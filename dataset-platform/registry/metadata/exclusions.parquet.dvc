@@ -1,0 +1,6 @@
+outs:
+- md5: 40fc961d02224d2e25d2c12248ea7792
+  size: 2971
+  hash: md5
+  path: exclusions.parquet
+  isexec: true

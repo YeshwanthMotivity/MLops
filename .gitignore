@@ -10,37 +10,25 @@ venv/
 env/
 .idea/
 .vscode/
-dataset-platform/storage/
-dataset-platform/batches/
-dataset-platform/exports/
-dataset-platform/registry/
-mlflow-data/
-postgres-data/
-storage/
-import_errors.txt
-*.log
-*.ppt
-*.pptx
-*.pdf
-
-# Testing
-.coverage
-htmlcov/
-coverage.xml
-.pytest_cache/
-
-# Build
-build/
-dist/
-*.egg-info/
-
-# Training & MLflow
-runs/
-mlruns/
-mlflow.db
-
 # Local Data
-storage/
-incoming/
-registry/
+# Ignore contents of data dirs, but NOT the dirs themselves or .dvc files
+storage/**/*
+incoming/**/*
+registry/**/*
+dataset-platform/storage/**/*
+dataset-platform/batches/**/*
+dataset-platform/exports/**/*
+dataset-platform/registry/**/*
+
+# CRITICAL: Allow directories themselves so Git can look inside for .dvc files
+!**/
+
+# Allow .dvc files everywhere
+!**/*.dvc
+
+# Allow specific .gitignore files that manage data tracking
+!**/.gitignore
+
+# Re-enable tracking for .dvc files (legacy/safety)
+!*.dvc
 /storage

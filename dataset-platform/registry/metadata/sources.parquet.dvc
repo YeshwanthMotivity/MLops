@@ -1,0 +1,6 @@
+outs:
+- md5: fc8800a99b939f7913a6b4c5a00102ff
+  size: 3439
+  hash: md5
+  path: sources.parquet
+  isexec: true

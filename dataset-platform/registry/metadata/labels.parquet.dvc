@@ -1,0 +1,6 @@
+outs:
+- md5: 5d612faea4db0c4380293d9d99f96dd1
+  size: 5849
+  hash: md5
+  path: labels.parquet
+  isexec: true

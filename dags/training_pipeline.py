@@ -24,6 +24,24 @@ dag = DAG(
     catchup=False,
 )
 
+# ----------------- 0. Checkout Data Version -----------------
+# Checkout the specific dataset version from DVC/Git
+checkout_command = """
+    cd /opt && \
+    git config --global --add safe.directory /opt && \
+    if [ "{{ dag_run.conf.get('version', 'None') }}" != "None" ]; then \
+        echo "Checking out version {{ dag_run.conf.get('version') }}"; \
+        git checkout {{ dag_run.conf.get('version') }}; \
+    fi && \
+    dvc checkout || echo "DVC Checkout failed or no changes"
+"""
+
+checkout_task = BashOperator(
+    task_id='checkout_dataset',
+    bash_command=checkout_command,
+    dag=dag,
+)
+
 # ----------------- 1. Export Dataset -----------------
 def run_export(**context):
     conf = context['dag_run'].conf or {}
@@ -54,7 +72,8 @@ train_command = """
     python /opt/training/train.py \
     --data "{{ task_instance.xcom_pull(task_ids='export_dataset') }}/dataset.yaml" \
     --epochs {{ dag_run.conf.get('epochs', 10) }} \
-    --imgsz 640
+    --imgsz 640 \
+    --register-name "{{ dag_run.conf.get('model_name', 'YOLOv8_Model') }}"
 """
 
 train_task = BashOperator(
@@ -63,16 +82,4 @@ train_task = BashOperator(
     dag=dag,
 )
 
-# ----------------- 3. Register Model -----------------
-# Placeholder for MLflow registration if not handled inside train.py
-register_command = """
-    echo "Model registration would happen here."
-"""
-
-register_task = BashOperator(
-    task_id='register_model',
-    bash_command=register_command,
-    dag=dag,
-)
-
-export_task >> train_task >> register_task
+checkout_task >> export_task >> train_task

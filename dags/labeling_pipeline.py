@@ -145,5 +145,25 @@ pull_task = PythonOperator(
     dag=dag,
 )
 
+# ----------------- 6. DVC Commit -----------------
+# Commit the new labels to DVC and Git
+commit_command = """
+    cd /opt/dataset-platform && \
+    dvc add ../storage && \
+    dvc push && \
+    git config --global --add safe.directory /opt && \
+    git config --global user.email "airflow@example.com" && \
+    git config --global user.name "Airflow Automation" && \
+    git add ../storage.dvc && \
+    git commit -m "Auto-commit: Labelling batch {{ task_instance.xcom_pull(task_ids='create_batch') }}" || echo "No changes to commit"
+"""
+
+commit_task = BashOperator(
+    task_id='dvc_commit',
+    bash_command=commit_command,
+    trigger_rule=TriggerRule.ALL_SUCCESS,
+    dag=dag,
+)
+
 # Flow
-ingest_task >> create_batch_task >> cvat_task >> wait_for_annotation >> pull_task
+ingest_task >> create_batch_task >> cvat_task >> wait_for_annotation >> pull_task >> commit_task

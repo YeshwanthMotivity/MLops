@@ -1,60 +1,113 @@
 
 import argparse
 import os
+import shutil
+from pathlib import Path
 from ultralytics import YOLO
+import mlflow
 
+# Default paths
 MODEL_PATH = os.getenv("MODEL_PATH", "/opt/model/yolov8n.pt")
+RUNS_DIR = Path("/opt/training/runs")
 
-def train(data_config, epochs, imgsz):
-    print(f"Loading model from: {MODEL_PATH}")
-    print(f"Data Config: {data_config}")
-    print(f"Epochs: {epochs}")
-    print(f"Image Size: {imgsz}")
+def train(data_config, epochs, imgsz, batch_size, register_name=None):
+    print(f"🚀 Starting Training...")
+    print(f"   Model: {MODEL_PATH}")
+    print(f"   Data: {data_config}")
+    print(f"   Epochs: {epochs}")
+    print(f"   ImgSz: {imgsz}")
 
-    # Initialize MLflow
-    import mlflow
-    import time
+    # 1. Setup MLflow
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment("YOLOv8_Training")
     
-    # Set tracking URI if not set in env (default to localhost for local testing)
-    if not os.environ.get("MLFLOW_TRACKING_URI"):
-        mlflow.set_tracking_uri("http://localhost:5000")
-        
-    print(f"Tracking URI: {mlflow.get_tracking_uri()}")
+    print(f"   MLflow Tracking URI: {tracking_uri}")
 
-    mlflow.set_experiment("yolo_training")
+    # 2. Load Model
+    # Ensure model file exists, or let YOLO download it
+    if not os.path.exists(MODEL_PATH):
+        print(f"⚠️ Model not found at {MODEL_PATH}, YOLO will attempt download.")
     
-    with mlflow.start_run():
-        # Log parameters
-        mlflow.log_param("epochs", epochs)
-        mlflow.log_param("imgsz", imgsz)
-        mlflow.log_param("data_config", data_config)
-        
-        model = YOLO(MODEL_PATH)
-        
+    model = YOLO(MODEL_PATH)
+
+    # 3. Train with MLflow Context
+    with mlflow.start_run() as run:
+        # Log Hyperparameters
+        mlflow.log_params({
+            "epochs": epochs,
+            "imgsz": imgsz,
+            "batch_size": batch_size,
+            "model_path": MODEL_PATH,
+            "data_config": data_config
+        })
+
+        # Run Training
+        # project=RUNS_DIR ensures results go to /opt/training/runs/train (or train2, train3...)
         results = model.train(
             data=data_config,
             epochs=epochs,
             imgsz=imgsz,
-            project="/opt/training/runs",
+            batch=batch_size,
+            project=str(RUNS_DIR),
             name="train",
-            exist_ok=True,
+            exist_ok=True, # Overwrite 'train' folder to save space in POC
         )
+
+        # 4. Log Metrics
+        # access results.box.map50, results.box.map, etc.
+        metrics = {
+            "map50": results.box.map50,
+            "map50-95": results.box.map,
+            "precision": results.box.mp,
+            "recall": results.box.mr
+        }
+        mlflow.log_metrics(metrics)
+        print(f"✅ Training Complete. Metrics: {metrics}")
+
+        # 5. Log Artifacts
+        # The best model is typically at runs/train/weights/best.pt
+        best_weight_path = RUNS_DIR / "train" / "weights" / "best.pt"
         
-        print("Training complete.")
-        best_path = "/opt/training/runs/train/weights/best.pt"
-        
-        if os.path.exists(best_path):
-            mlflow.log_artifact(best_path)
-            print(f"Model saved to {best_path} and logged to MLflow")
-        
-        return best_path
+        if best_weight_path.exists():
+            print(f"   Logging artifact: {best_weight_path}")
+            mlflow.log_artifact(str(best_weight_path), artifact_path="weights")
+            
+            # Also log the confusion matrix if it exists
+            confusion_matrix = RUNS_DIR / "train" / "confusion_matrix.png"
+            if confusion_matrix.exists():
+                mlflow.log_artifact(str(confusion_matrix))
+
+            # 6. Register Model (Optional)
+            if register_name:
+                model_uri = f"runs:/{run.info.run_id}/weights/best.pt"
+                print(f"   Registering model version: {register_name} (URI: {model_uri})")
+                try:
+                    mlflow.register_model(model_uri, register_name)
+                    print("✅ Model registered successfully.")
+                except Exception as e:
+                    print(f"⚠️ Failed to register model: {e}")
+
+            return str(best_weight_path)
+        else:
+            print("❌ Error: Could not find best.pt to log.")
+            return None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=str, required=True)
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--data", type=str, required=True, help="Path to dataset.yaml")
+    parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--imgsz", type=int, default=640)
+    parser.add_argument("--batch", type=int, default=16)
+    parser.add_argument("--register-name", type=str, default=None, help="Model name for MLflow Registry")
     
     args = parser.parse_args()
-    train(args.data, args.epochs, args.imgsz)
-
+    
+    # Ensure runs dir exists
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        train(args.data, args.epochs, args.imgsz, args.batch, args.register_name)
+    except Exception as e:
+        print(f"❌ Training Failed: {e}")
+        exit(1)
